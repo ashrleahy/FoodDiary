@@ -1,0 +1,269 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { AppState, LogEntry, FavouriteFood } from '@/lib/types';
+import { loadState, saveState, generateId, getTodayStr, getEntriesForDate, sumCalories, sumProtein, sumWaterMl, sumAlcoholUnits } from '@/lib/storage';
+import LogForm from '@/components/LogForm';
+import TodayFeed from '@/components/TodayFeed';
+import HistoryView from '@/components/HistoryView';
+import FavouritesManager from '@/components/FavouritesManager';
+import DayStats from '@/components/DayStats';
+import { UtensilsCrossed, History, Star, Settings } from 'lucide-react';
+
+type Tab = 'today' | 'history' | 'favourites' | 'settings';
+
+export default function Home() {
+  const [state, setState] = useState<AppState | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>('today');
+  const [showLogForm, setShowLogForm] = useState(false);
+
+  useEffect(() => {
+    setState(loadState());
+  }, []);
+
+  const updateState = useCallback((updates: Partial<AppState>) => {
+    setState(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, ...updates };
+      saveState(next);
+      return next;
+    });
+  }, []);
+
+  const addEntry = useCallback((entry: Omit<LogEntry, 'id' | 'date' | 'timestamp'>) => {
+    const today = getTodayStr();
+    const newEntry: LogEntry = {
+      ...entry,
+      id: generateId(),
+      date: today,
+      timestamp: new Date().toISOString(),
+    };
+    setState(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, entries: [newEntry, ...prev.entries] };
+      saveState(next);
+      return next;
+    });
+    setShowLogForm(false);
+  }, []);
+
+  const deleteEntry = useCallback((id: string) => {
+    setState(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, entries: prev.entries.filter(e => e.id !== id) };
+      saveState(next);
+      return next;
+    });
+  }, []);
+
+  const addFavourite = useCallback((fav: Omit<FavouriteFood, 'id'>) => {
+    const newFav: FavouriteFood = { ...fav, id: generateId() };
+    setState(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, favourites: [...prev.favourites, newFav] };
+      saveState(next);
+      return next;
+    });
+  }, []);
+
+  const deleteFavourite = useCallback((id: string) => {
+    setState(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, favourites: prev.favourites.filter(f => f.id !== id) };
+      saveState(next);
+      return next;
+    });
+  }, []);
+
+  const logFavourite = useCallback((fav: FavouriteFood) => {
+    addEntry({
+      type: fav.type,
+      name: fav.name,
+      calories: fav.calories,
+      protein: fav.protein,
+      quantity: fav.quantity,
+      unit: fav.unit,
+      ml: fav.ml,
+      alcoholUnits: fav.alcoholUnits,
+      isAIEstimated: false,
+      isFavourite: true,
+    });
+  }, [addEntry]);
+
+  if (!state) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-[var(--text-muted)] mono text-sm shimmer">loading...</div>
+      </div>
+    );
+  }
+
+  const todayStr = getTodayStr();
+  const todayEntries = getEntriesForDate(state.entries, todayStr);
+  const todayCals = sumCalories(todayEntries);
+  const todayProtein = sumProtein(todayEntries);
+  const todayWater = sumWaterMl(todayEntries);
+  const todayAlcohol = sumAlcoholUnits(todayEntries);
+
+  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: 'today', label: 'Today', icon: <UtensilsCrossed size={15} /> },
+    { id: 'history', label: 'History', icon: <History size={15} /> },
+    { id: 'favourites', label: 'Favourites', icon: <Star size={15} /> },
+    { id: 'settings', label: 'Settings', icon: <Settings size={15} /> },
+  ];
+
+  return (
+    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <header style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg)' }} className="sticky top-0 z-10">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div>
+            <span className="mono font-medium text-lg" style={{ color: 'var(--accent-green)' }}>cal</span>
+            <span className="mono font-medium text-lg" style={{ color: 'var(--text-secondary)' }}>tracker</span>
+          </div>
+          <button className="btn-primary flex items-center gap-2 text-sm" onClick={() => setShowLogForm(true)}>
+            <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Log
+          </button>
+        </div>
+        <div className="max-w-2xl mx-auto px-4 pb-3">
+          <div className="flex gap-1" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 3 }}>
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className="flex items-center gap-1.5 flex-1 justify-center py-1.5 text-sm rounded-[7px] transition-all"
+                style={{
+                  color: activeTab === tab.id ? '#0f0f11' : 'var(--text-secondary)',
+                  border: 'none',
+                  background: activeTab === tab.id ? 'var(--accent-green)' : 'transparent',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-body)',
+                  fontWeight: activeTab === tab.id ? 600 : 400,
+                }}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-2xl mx-auto px-4 py-4">
+        {activeTab === 'today' && (
+          <div className="fade-in space-y-4">
+            <DayStats
+              calories={todayCals}
+              protein={todayProtein}
+              waterMl={todayWater}
+              alcoholUnits={todayAlcohol}
+              calorieGoal={state.dailyCalorieGoal}
+              proteinGoal={state.dailyProteinGoal}
+              waterGoalMl={state.dailyWaterGoalMl}
+            />
+
+            {state.favourites.length > 0 && (
+              <div>
+                <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Quick log</p>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {state.favourites.slice(0, 10).map(fav => (
+                    <button
+                      key={fav.id}
+                      onClick={() => logFavourite(fav)}
+                      className="card card-hover flex-shrink-0 px-3 py-2 text-left"
+                      style={{ cursor: 'pointer', border: 'none', fontFamily: 'var(--font-body)' }}
+                    >
+                      <div style={{ fontSize: 18 }}>{fav.emoji || '🍽️'}</div>
+                      <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)', maxWidth: 70, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fav.name}</div>
+                      <div className="mono text-xs" style={{ color: 'var(--accent-green)' }}>{fav.calories}k</div>
+                      {fav.protein ? <div className="mono text-xs" style={{ color: 'var(--accent-purple)' }}>{fav.protein}p</div> : null}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <TodayFeed entries={todayEntries} onDelete={deleteEntry} />
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div className="fade-in">
+            <HistoryView entries={state.entries} calorieGoal={state.dailyCalorieGoal} proteinGoal={state.dailyProteinGoal} />
+          </div>
+        )}
+
+        {activeTab === 'favourites' && (
+          <div className="fade-in">
+            <FavouritesManager
+              favourites={state.favourites}
+              onAdd={addFavourite}
+              onDelete={deleteFavourite}
+              onLog={logFavourite}
+            />
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="fade-in space-y-4">
+            <div className="card p-4">
+              <h2 className="font-semibold mb-4" style={{ fontSize: 15 }}>Goals</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Daily calorie goal</label>
+                  <input type="number" className="input-base" value={state.dailyCalorieGoal}
+                    onChange={e => updateState({ dailyCalorieGoal: parseInt(e.target.value) || 3300 })} />
+                </div>
+                <div>
+                  <label className="text-sm block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Daily protein goal (g)</label>
+                  <input type="number" className="input-base" value={state.dailyProteinGoal}
+                    onChange={e => updateState({ dailyProteinGoal: parseInt(e.target.value) || 160 })} />
+                </div>
+                <div>
+                  <label className="text-sm block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Daily water goal (ml)</label>
+                  <input type="number" className="input-base" value={state.dailyWaterGoalMl}
+                    onChange={e => updateState({ dailyWaterGoalMl: parseInt(e.target.value) || 2000 })} />
+                </div>
+              </div>
+            </div>
+
+            <div className="card p-4">
+              <h2 className="font-semibold mb-2" style={{ fontSize: 15 }}>Data</h2>
+              <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>All data is stored locally in your browser.</p>
+              <div className="flex gap-2 flex-wrap">
+                <button className="btn-ghost text-sm" onClick={() => {
+                  const data = JSON.stringify(state, null, 2);
+                  const blob = new Blob([data], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `caltracker_export_${getTodayStr()}.json`;
+                  a.click();
+                }}>Export JSON</button>
+                <button className="btn-ghost text-sm" style={{ color: 'var(--accent-red)', borderColor: 'var(--accent-red)' }}
+                  onClick={() => { if (confirm('Clear all logged entries? Favourites will be kept.')) updateState({ entries: [] }); }}>
+                  Clear entries
+                </button>
+              </div>
+            </div>
+
+            <div className="card p-4">
+              <h2 className="font-semibold mb-2" style={{ fontSize: 15 }}>About</h2>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                CalTracker uses Claude AI to estimate calories and protein from meal descriptions. AI estimates are marked with a ✦ indicator.
+              </p>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {showLogForm && (
+        <LogForm
+          favourites={state.favourites}
+          onSubmit={addEntry}
+          onClose={() => setShowLogForm(false)}
+          onLogFavourite={logFavourite}
+        />
+      )}
+    </div>
+  );
+}
