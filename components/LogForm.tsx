@@ -6,7 +6,7 @@ import { X, Sparkles, Loader } from 'lucide-react';
 
 interface LogFormProps {
   favourites: FavouriteFood[];
-  onSubmit: (entry: Omit<LogEntry, 'id' | 'date' | 'timestamp'>) => void;
+  onSubmit: (entry: Omit<LogEntry, 'id' | 'timestamp'>) => void;
   onClose: () => void;
   onLogFavourite: (fav: FavouriteFood) => void;
 }
@@ -20,9 +20,22 @@ const TYPE_OPTIONS: { value: EntryType; label: string; emoji: string }[] = [
   { value: 'water', label: 'Water', emoji: '💧' },
 ];
 
+function getDateOptions(): { value: string; label: string }[] {
+  const options = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const value = d.toISOString().split('T')[0];
+    const label = i === 0 ? 'Today' : i === 1 ? 'Yesterday' : d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+    options.push({ value, label });
+  }
+  return options;
+}
+
 export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite }: LogFormProps) {
   const [mode, setMode] = useState<Mode>('ai');
   const [type, setType] = useState<EntryType>('meal');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
   const [manualName, setManualName] = useState('');
   const [manualCals, setManualCals] = useState('');
@@ -33,6 +46,7 @@ export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite 
   const [estimate, setEstimate] = useState<{ calories: number; protein: number; confidence: string; notes: string; ml?: number; alcoholUnits?: number } | null>(null);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const dateOptions = getDateOptions();
 
   useEffect(() => {
     if (mode === 'ai' && inputRef.current) {
@@ -65,6 +79,7 @@ export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite 
     if (!estimate) return;
     onSubmit({
       type,
+      date: selectedDate,
       name: description.trim(),
       calories: estimate.calories,
       protein: estimate.protein,
@@ -79,12 +94,29 @@ export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite 
     if (!manualName.trim() || isNaN(cals)) return;
     onSubmit({
       type,
+      date: selectedDate,
       name: manualName.trim(),
       calories: cals,
       protein: manualProtein ? parseInt(manualProtein) : undefined,
       ml: manualMl ? parseInt(manualMl) : undefined,
       alcoholUnits: manualAlcohol ? parseFloat(manualAlcohol) : undefined,
       isAIEstimated: false,
+    });
+  };
+
+  const handleFavouriteLog = (fav: FavouriteFood) => {
+    onSubmit({
+      type: fav.type,
+      date: selectedDate,
+      name: fav.name,
+      calories: fav.calories,
+      protein: fav.protein,
+      quantity: fav.quantity,
+      unit: fav.unit,
+      ml: fav.ml,
+      alcoholUnits: fav.alcoholUnits,
+      isAIEstimated: false,
+      isFavourite: true,
     });
   };
 
@@ -109,6 +141,30 @@ export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite 
         </div>
 
         <div className="p-4 space-y-4">
+          {/* Date selector */}
+          <div>
+            <label className="text-xs block mb-1.5" style={{ color: 'var(--text-muted)' }}>Date</label>
+            <div className="flex gap-1.5 flex-wrap">
+              {dateOptions.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setSelectedDate(opt.value)}
+                  style={{
+                    padding: '5px 12px', borderRadius: 99, cursor: 'pointer',
+                    fontFamily: 'var(--font-body)', fontSize: 12,
+                    background: selectedDate === opt.value ? 'var(--accent-green)' : 'var(--bg)',
+                    border: `1px solid ${selectedDate === opt.value ? 'var(--accent-green)' : 'var(--border)'}`,
+                    color: selectedDate === opt.value ? '#0d0d0f' : 'var(--text-secondary)',
+                    fontWeight: selectedDate === opt.value ? 600 : 400,
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Mode selector */}
           <div className="flex gap-1" style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
             {(['ai', 'favourite', 'manual'] as Mode[]).map(m => (
@@ -119,7 +175,7 @@ export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite 
                   flex: 1, padding: '7px 4px', borderRadius: 6, border: 'none', cursor: 'pointer',
                   fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: mode === m ? 600 : 400,
                   background: mode === m ? 'var(--accent-green)' : 'transparent',
-                  color: mode === m ? '#0f0f11' : 'var(--text-secondary)',
+                  color: mode === m ? '#0d0d0f' : 'var(--text-secondary)',
                   transition: 'all 0.15s',
                 }}
               >
@@ -233,7 +289,7 @@ export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite 
                     key={fav.id}
                     className="card card-hover w-full text-left flex items-center justify-between gap-3"
                     style={{ padding: '10px 14px', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
-                    onClick={() => onLogFavourite(fav)}
+                    onClick={() => handleFavouriteLog(fav)}
                   >
                     <div className="flex items-center gap-3">
                       <span style={{ fontSize: 22 }}>{fav.emoji || '🍽️'}</span>
