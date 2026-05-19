@@ -35,7 +35,14 @@ function getDateOptions(): { value: string; label: string }[] {
 export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite }: LogFormProps) {
   const [mode, setMode] = useState<Mode>('ai');
   const [type, setType] = useState<EntryType>('meal');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+const [selectedDate, setSelectedDate] = useState(() => {
+  const now = new Date();
+  const adelaideTime = new Date(now.toLocaleString('en-US', { timeZone: 'Australia/Adelaide' }));
+  const y = adelaideTime.getFullYear();
+  const m = String(adelaideTime.getMonth() + 1).padStart(2, '0');
+  const d = String(adelaideTime.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+});
   const [description, setDescription] = useState('');
   const [manualName, setManualName] = useState('');
   const [manualCals, setManualCals] = useState('');
