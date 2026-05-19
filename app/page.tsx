@@ -41,12 +41,12 @@ export default function Home() {
     });
   }, [persistState]);
 
-const addEntry = useCallback((entry: Omit<LogEntry, 'id' | 'timestamp'>) => {
-  const newEntry: LogEntry = {
-    ...entry,
-    id: generateId(),
-    timestamp: new Date().toISOString(),
-  };
+  const addEntry = useCallback((entry: Omit<LogEntry, 'id' | 'timestamp'>) => {
+    const newEntry: LogEntry = {
+      ...entry,
+      id: generateId(),
+      timestamp: new Date().toISOString(),
+    };
     setState(prev => {
       if (!prev) return prev;
       const next = { ...prev, entries: [newEntry, ...prev.entries] };
@@ -87,6 +87,7 @@ const addEntry = useCallback((entry: Omit<LogEntry, 'id' | 'timestamp'>) => {
   const logFavourite = useCallback((fav: FavouriteFood) => {
     addEntry({
       type: fav.type,
+      date: getTodayStr(),
       name: fav.name,
       calories: fav.calories,
       protein: fav.protein,
