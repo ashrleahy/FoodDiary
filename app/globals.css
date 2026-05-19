@@ -3,22 +3,22 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0f0f11;
-  --bg-card: #18181c;
-  --bg-card-hover: #1e1e24;
-  --bg-input: #111114;
-  --border: #2a2a32;
-  --border-light: #333340;
-  --text-primary: #f0f0f2;
-  --text-secondary: #8b8b9a;
-  --text-muted: #55555f;
+  --bg: #0d0d0f;
+  --bg-card: #1a1a1f;
+  --bg-card-hover: #222228;
+  --bg-input: #111115;
+  --border: #2e2e38;
+  --border-light: #3d3d4a;
+  --text-primary: #f4f4f6;
+  --text-secondary: #c0c0cc;
+  --text-muted: #888899;
   --accent-green: #a3e635;
   --accent-amber: #fbbf24;
   --accent-red: #f87171;
   --accent-blue: #60a5fa;
   --accent-purple: #c084fc;
-  --font-body: 'DM Sans', sans-serif;
-  --font-display: 'DM Mono', monospace;
+  --font-body: 'Inter', sans-serif;
+  --font-display: 'Space Mono', monospace;
 }
 
 * {
@@ -70,7 +70,7 @@ html, body {
 
 .btn-primary {
   background: var(--accent-green);
-  color: #0f0f11;
+  color: #0d0d0f;
   border: none;
   border-radius: 8px;
   padding: 10px 20px;
@@ -127,6 +127,6 @@ html, body {
 
 .tab-active {
   background: var(--accent-green) !important;
-  color: #0f0f11 !important;
+  color: #0d0d0f !important;
   font-weight: 600;
 }
