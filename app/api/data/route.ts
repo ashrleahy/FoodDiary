@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put, head, getDownloadUrl } from '@vercel/blob';
+import { put, head } from '@vercel/blob';
 
-const PASSPHRASE = process.env.DATA_PASSPHRASE!;
 const BLOB_KEY = 'fooddiary/data.json';
 
-export async function GET(req: NextRequest) {
-  const auth = req.headers.get('x-passphrase');
-  if (auth !== PASSPHRASE) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function GET() {
   try {
     const blob = await head(BLOB_KEY);
     if (!blob) return NextResponse.json(null);
@@ -22,11 +16,6 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = req.headers.get('x-passphrase');
-  if (auth !== PASSPHRASE) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
     const body = await req.json();
     await put(BLOB_KEY, JSON.stringify(body), {
