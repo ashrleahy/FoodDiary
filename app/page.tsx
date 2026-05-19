@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, LogEntry, FavouriteFood } from '@/lib/types';
-import { loadState, saveState, generateId, getTodayStr, getEntriesForDate, sumCalories, sumProtein, sumWaterMl, sumAlcoholUnits } from '@/lib/storage';
+import { loadFromBlob, saveToBlob, generateId, getTodayStr, getEntriesForDate, sumCalories, sumProtein, sumWaterMl, sumAlcoholUnits, DEFAULT_STATE } from '@/lib/storage';
 import LogForm from '@/components/LogForm';
 import TodayFeed from '@/components/TodayFeed';
 import HistoryView from '@/components/HistoryView';
@@ -13,22 +13,65 @@ import { UtensilsCrossed, History, Star, Settings } from 'lucide-react';
 type Tab = 'today' | 'history' | 'favourites' | 'settings';
 
 export default function Home() {
+  const [passphrase, setPassphrase] = useState<string | null>(null);
+  const [passphraseInput, setPassphraseInput] = useState('');
+  const [authError, setAuthError] = useState('');
   const [state, setState] = useState<AppState | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('today');
   const [showLogForm, setShowLogForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const saveTimer = useRef<NodeJS.Timeout | null>(null);
 
+  // Load passphrase from sessionStorage on mount
   useEffect(() => {
-    setState(loadState());
+    const stored = sessionStorage.getItem('fdp');
+    if (stored) setPassphrase(stored);
+  }, []);
+
+  // Load data when passphrase is set
+  useEffect(() => {
+    if (!passphrase) return;
+    loadFromBlob(passphrase).then(data => {
+      if (data === null) {
+        setAuthError('Wrong passphrase');
+        setPassphrase(null);
+        sessionStorage.removeItem('fdp');
+      } else {
+        setState(data);
+      }
+    });
+  }, [passphrase]);
+
+  const handleLogin = async () => {
+    setAuthError('');
+    const res = await fetch('/api/data', {
+      headers: { 'x-passphrase': passphraseInput },
+    });
+    if (res.status === 401) {
+      setAuthError('Wrong passphrase, try again.');
+      return;
+    }
+    sessionStorage.setItem('fdp', passphraseInput);
+    setPassphrase(passphraseInput);
+  };
+
+  const persistState = useCallback((newState: AppState, phrase: string) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    setSaving(true);
+    saveTimer.current = setTimeout(async () => {
+      await saveToBlob(phrase, newState);
+      setSaving(false);
+    }, 1000);
   }, []);
 
   const updateState = useCallback((updates: Partial<AppState>) => {
     setState(prev => {
-      if (!prev) return prev;
+      if (!prev || !passphrase) return prev;
       const next = { ...prev, ...updates };
-      saveState(next);
+      persistState(next, passphrase);
       return next;
     });
-  }, []);
+  }, [passphrase, persistState]);
 
   const addEntry = useCallback((entry: Omit<LogEntry, 'id' | 'date' | 'timestamp'>) => {
     const today = getTodayStr();
@@ -39,41 +82,41 @@ export default function Home() {
       timestamp: new Date().toISOString(),
     };
     setState(prev => {
-      if (!prev) return prev;
+      if (!prev || !passphrase) return prev;
       const next = { ...prev, entries: [newEntry, ...prev.entries] };
-      saveState(next);
+      persistState(next, passphrase);
       return next;
     });
     setShowLogForm(false);
-  }, []);
+  }, [passphrase, persistState]);
 
   const deleteEntry = useCallback((id: string) => {
     setState(prev => {
-      if (!prev) return prev;
+      if (!prev || !passphrase) return prev;
       const next = { ...prev, entries: prev.entries.filter(e => e.id !== id) };
-      saveState(next);
+      persistState(next, passphrase);
       return next;
     });
-  }, []);
+  }, [passphrase, persistState]);
 
   const addFavourite = useCallback((fav: Omit<FavouriteFood, 'id'>) => {
     const newFav: FavouriteFood = { ...fav, id: generateId() };
     setState(prev => {
-      if (!prev) return prev;
+      if (!prev || !passphrase) return prev;
       const next = { ...prev, favourites: [...prev.favourites, newFav] };
-      saveState(next);
+      persistState(next, passphrase);
       return next;
     });
-  }, []);
+  }, [passphrase, persistState]);
 
   const deleteFavourite = useCallback((id: string) => {
     setState(prev => {
-      if (!prev) return prev;
+      if (!prev || !passphrase) return prev;
       const next = { ...prev, favourites: prev.favourites.filter(f => f.id !== id) };
-      saveState(next);
+      persistState(next, passphrase);
       return next;
     });
-  }, []);
+  }, [passphrase, persistState]);
 
   const logFavourite = useCallback((fav: FavouriteFood) => {
     addEntry({
@@ -89,6 +132,36 @@ export default function Home() {
       isFavourite: true,
     });
   }, [addEntry]);
+
+  // Login screen
+  if (!passphrase) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
+        <div className="card p-8 w-full max-w-sm">
+          <div className="mb-6 text-center">
+            <span className="mono font-medium text-2xl" style={{ color: 'var(--accent-green)' }}>cal</span>
+            <span className="mono font-medium text-2xl" style={{ color: 'var(--text-secondary)' }}>tracker</span>
+            <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>Enter your passphrase to continue</p>
+          </div>
+          <div className="space-y-3">
+            <input
+              className="input-base"
+              type="password"
+              placeholder="Passphrase"
+              value={passphraseInput}
+              onChange={e => setPassphraseInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleLogin(); }}
+              autoFocus
+            />
+            {authError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{authError}</p>}
+            <button className="btn-primary w-full" onClick={handleLogin} disabled={!passphraseInput}>
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!state) {
     return (
@@ -116,9 +189,12 @@ export default function Home() {
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <header style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg)' }} className="sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <span className="mono font-medium text-lg" style={{ color: 'var(--accent-green)' }}>cal</span>
-            <span className="mono font-medium text-lg" style={{ color: 'var(--text-secondary)' }}>tracker</span>
+          <div className="flex items-center gap-3">
+            <div>
+              <span className="mono font-medium text-lg" style={{ color: 'var(--accent-green)' }}>cal</span>
+              <span className="mono font-medium text-lg" style={{ color: 'var(--text-secondary)' }}>tracker</span>
+            </div>
+            {saving && <span className="text-xs shimmer" style={{ color: 'var(--text-muted)' }}>saving...</span>}
           </div>
           <button className="btn-primary flex items-center gap-2 text-sm" onClick={() => setShowLogForm(true)}>
             <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Log
@@ -132,7 +208,7 @@ export default function Home() {
                 onClick={() => setActiveTab(tab.id)}
                 className="flex items-center gap-1.5 flex-1 justify-center py-1.5 text-sm rounded-[7px] transition-all"
                 style={{
-                  color: activeTab === tab.id ? '#0f0f11' : 'var(--text-secondary)',
+                  color: activeTab === tab.id ? '#0d0d0f' : 'var(--text-secondary)',
                   border: 'none',
                   background: activeTab === tab.id ? 'var(--accent-green)' : 'transparent',
                   cursor: 'pointer',
@@ -228,7 +304,7 @@ export default function Home() {
 
             <div className="card p-4">
               <h2 className="font-semibold mb-2" style={{ fontSize: 15 }}>Data</h2>
-              <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>All data is stored locally in your browser.</p>
+              <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Your data is synced to Vercel Blob storage.</p>
               <div className="flex gap-2 flex-wrap">
                 <button className="btn-ghost text-sm" onClick={() => {
                   const data = JSON.stringify(state, null, 2);
@@ -243,13 +319,20 @@ export default function Home() {
                   onClick={() => { if (confirm('Clear all logged entries? Favourites will be kept.')) updateState({ entries: [] }); }}>
                   Clear entries
                 </button>
+                <button className="btn-ghost text-sm" onClick={() => {
+                  sessionStorage.removeItem('fdp');
+                  setPassphrase(null);
+                  setState(null);
+                }}>
+                  Lock
+                </button>
               </div>
             </div>
 
             <div className="card p-4">
               <h2 className="font-semibold mb-2" style={{ fontSize: 15 }}>About</h2>
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                CalTracker uses Claude AI to estimate calories and protein from meal descriptions. AI estimates are marked with a ✦ indicator.
+                CalTracker uses Claude AI to estimate calories and protein. AI estimates are marked with ✦. Data syncs across devices via Vercel Blob.
               </p>
             </div>
           </div>
