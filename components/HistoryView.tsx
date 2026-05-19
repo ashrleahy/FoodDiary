@@ -6,11 +6,13 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine
 } from 'recharts';
 import { getLast7Days, getLast30Days, getEntriesForDate, sumCalories, sumProtein, sumWaterMl, sumAlcoholUnits, formatDateStr } from '@/lib/storage';
+import { Trash2 } from 'lucide-react';
 
 interface HistoryViewProps {
   entries: LogEntry[];
   calorieGoal: number;
   proteinGoal: number;
+  onDelete: (id: string) => void;
 }
 
 type Period = '7d' | '30d' | 'months';
@@ -71,7 +73,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export default function HistoryView({ entries, calorieGoal, proteinGoal }: HistoryViewProps) {
+export default function HistoryView({ entries, calorieGoal, proteinGoal, onDelete }: HistoryViewProps) {
   const [period, setPeriod] = useState<Period>('7d');
   const [metric, setMetric] = useState<Metric>('cals');
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
@@ -135,7 +137,7 @@ export default function HistoryView({ entries, calorieGoal, proteinGoal }: Histo
             flex: 1, padding: '7px', borderRadius: 7, border: 'none', cursor: 'pointer',
             fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: period === p ? 600 : 400,
             background: period === p ? 'var(--accent-green)' : 'transparent',
-            color: period === p ? '#0f0f11' : 'var(--text-secondary)',
+            color: period === p ? '#0d0d0f' : 'var(--text-secondary)',
             transition: 'all 0.15s',
           }}>
             {label}
@@ -234,14 +236,20 @@ export default function HistoryView({ entries, calorieGoal, proteinGoal }: Histo
           <p className="text-sm font-medium mb-3">{formatDateStr(expandedDate)}</p>
           <div className="space-y-2">
             {expandedEntries.map(e => (
-              <div key={e.id} className="flex items-center justify-between">
-                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <div key={e.id} className="flex items-center justify-between gap-2">
+                <div className="text-sm flex-1" style={{ color: 'var(--text-secondary)' }}>
                   {e.type === 'meal' ? '🍽️' : e.type === 'alcohol' ? '🍺' : e.type === 'water' ? '💧' : '🥤'} {e.name}
                   {e.isAIEstimated && <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>✦</span>}
                 </div>
-                <div className="flex gap-3">
+                <div className="flex items-center gap-3">
                   {e.protein ? <span className="mono text-xs" style={{ color: 'var(--accent-purple)' }}>{e.protein}g</span> : null}
                   <span className="mono text-sm" style={{ color: 'var(--accent-green)' }}>{e.calories} kcal</span>
+                  <button
+                    onClick={() => onDelete(e.id)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4 }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             ))}
