@@ -201,8 +201,7 @@ export default function Home() {
 
         {activeTab === 'history' && (
           <div className="fade-in">
-            <HistoryView entries={state.entries} calorieGoal={state.dailyCalorieGoal} proteinGoal={state.dailyProteinGoal} />
-          </div>
+<HistoryView entries={state.entries} calorieGoal={state.dailyCalorieGoal} proteinGoal={state.dailyProteinGoal} onDelete={deleteEntry} />          </div>
         )}
 
         {activeTab === 'favourites' && (
