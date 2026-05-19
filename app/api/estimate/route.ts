@@ -36,7 +36,7 @@ Respond with ONLY a JSON object in this exact format (no markdown, no explanatio
 Use realistic Australian portion sizes. For meals, estimate a typical serving. Be conservative but realistic.`;
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-opus-4-5',
       max_tokens: 300,
       messages: [{ role: 'user', content: prompt }],
     });
