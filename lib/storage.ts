@@ -1,7 +1,5 @@
 import { AppState, LogEntry, FavouriteFood } from './types';
 
-const STORAGE_KEY = 'caltracker_data';
-
 const DEFAULT_FAVOURITES: FavouriteFood[] = [
   {
     id: 'fav_1', name: 'Weetbix Bowl', type: 'meal',
@@ -55,34 +53,13 @@ const DEFAULT_FAVOURITES: FavouriteFood[] = [
   },
 ];
 
-const DEFAULT_STATE: AppState = {
+export const DEFAULT_STATE: AppState = {
   entries: [],
   favourites: DEFAULT_FAVOURITES,
   dailyCalorieGoal: 3300,
   dailyProteinGoal: 160,
   dailyWaterGoalMl: 2000,
 };
-
-export function loadState(): AppState {
-  if (typeof window === 'undefined') return DEFAULT_STATE;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_STATE;
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_STATE, ...parsed };
-  } catch {
-    return DEFAULT_STATE;
-  }
-}
-
-export function saveState(state: AppState): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    console.error('Failed to save state');
-  }
-}
 
 export function generateId(): string {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -141,4 +118,34 @@ export function getLast30Days(): string[] {
 export function formatDateStr(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+// API helpers
+export async function loadFromBlob(passphrase: string): Promise<AppState> {
+  try {
+    const res = await fetch('/api/data', {
+      headers: { 'x-passphrase': passphrase },
+    });
+    if (!res.ok) throw new Error('Failed to load');
+    const data = await res.json();
+    if (!data) return DEFAULT_STATE;
+    return { ...DEFAULT_STATE, ...data };
+  } catch {
+    return DEFAULT_STATE;
+  }
+}
+
+export async function saveToBlob(passphrase: string, state: AppState): Promise<void> {
+  try {
+    await fetch('/api/data', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-passphrase': passphrase,
+      },
+      body: JSON.stringify(state),
+    });
+  } catch {
+    console.error('Failed to save');
+  }
 }
