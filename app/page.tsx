@@ -41,14 +41,12 @@ export default function Home() {
     });
   }, [persistState]);
 
-  const addEntry = useCallback((entry: Omit<LogEntry, 'id' | 'date' | 'timestamp'>) => {
-    const today = getTodayStr();
-    const newEntry: LogEntry = {
-      ...entry,
-      id: generateId(),
-      date: today,
-      timestamp: new Date().toISOString(),
-    };
+const addEntry = useCallback((entry: Omit<LogEntry, 'id' | 'timestamp'>) => {
+  const newEntry: LogEntry = {
+    ...entry,
+    id: generateId(),
+    timestamp: new Date().toISOString(),
+  };
     setState(prev => {
       if (!prev) return prev;
       const next = { ...prev, entries: [newEntry, ...prev.entries] };
