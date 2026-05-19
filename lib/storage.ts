@@ -121,11 +121,9 @@ export function formatDateStr(dateStr: string): string {
 }
 
 // API helpers
-export async function loadFromBlob(passphrase: string): Promise<AppState> {
+export async function loadFromBlob(): Promise<AppState> {
   try {
-    const res = await fetch('/api/data', {
-      headers: { 'x-passphrase': passphrase },
-    });
+    const res = await fetch('/api/data');
     if (!res.ok) throw new Error('Failed to load');
     const data = await res.json();
     if (!data) return DEFAULT_STATE;
@@ -135,14 +133,11 @@ export async function loadFromBlob(passphrase: string): Promise<AppState> {
   }
 }
 
-export async function saveToBlob(passphrase: string, state: AppState): Promise<void> {
+export async function saveToBlob(state: AppState): Promise<void> {
   try {
     await fetch('/api/data', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-passphrase': passphrase,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(state),
     });
   } catch {
