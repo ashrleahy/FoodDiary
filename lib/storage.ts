@@ -1,48 +1,144 @@
-export type EntryType = 'meal' | 'drink' | 'alcohol' | 'water';
+import { AppState, LogEntry, FavouriteFood } from './types';
 
-export interface LogEntry {
-  id: string;
-  date: string;
-  timestamp: string;
-  type: EntryType;
-  name: string;
-  description?: string;
-  calories: number;
-  protein?: number;
-  quantity?: number;
-  unit?: string;
-  isAIEstimated: boolean;
-  isFavourite?: boolean;
-  ml?: number;
-  alcoholUnits?: number;
+const STORAGE_KEY = 'caltracker_data';
+
+const DEFAULT_FAVOURITES: FavouriteFood[] = [
+  {
+    id: 'fav_1', name: 'Weetbix Bowl', type: 'meal',
+    calories: 485, protein: 52,
+    quantity: 1, unit: 'bowl', emoji: '🥣',
+  },
+  {
+    id: 'fav_2', name: 'Protein Shake', type: 'drink',
+    calories: 335, protein: 45,
+    quantity: 1, unit: 'shake', ml: 350, emoji: '🥤',
+  },
+  {
+    id: 'fav_3', name: 'Pre Pack Lunch', type: 'meal',
+    calories: 400, protein: 30,
+    quantity: 1, unit: 'pack', emoji: '🍱',
+  },
+  {
+    id: 'fav_4', name: 'Yoghurt & Berries', type: 'meal',
+    calories: 230, protein: 10,
+    quantity: 1, unit: 'bowl', emoji: '🫐',
+  },
+  {
+    id: 'fav_5', name: 'Flat White', type: 'drink',
+    calories: 120, protein: 6,
+    quantity: 1, unit: 'cup', ml: 220, emoji: '☕',
+  },
+  {
+    id: 'fav_6', name: 'Instant Coffee', type: 'drink',
+    calories: 50, protein: 2,
+    quantity: 1, unit: 'cup', ml: 200, emoji: '☕',
+  },
+  {
+    id: 'fav_7', name: 'Coopers Mild Ale', type: 'alcohol',
+    calories: 105, protein: 1,
+    quantity: 1, unit: 'can', ml: 375, alcoholUnits: 1.0, emoji: '🍺',
+  },
+  {
+    id: 'fav_8', name: 'Coopers Pale Ale', type: 'alcohol',
+    calories: 135, protein: 2,
+    quantity: 1, unit: 'can', ml: 375, alcoholUnits: 1.4, emoji: '🍺',
+  },
+  {
+    id: 'fav_9', name: 'Heineken', type: 'alcohol',
+    calories: 140, protein: 2,
+    quantity: 1, unit: 'bottle', ml: 330, alcoholUnits: 1.3, emoji: '🍺',
+  },
+  {
+    id: 'fav_10', name: 'Red Wine (large)', type: 'alcohol',
+    calories: 150, protein: 0,
+    quantity: 1, unit: 'glass', ml: 180, alcoholUnits: 2.1, emoji: '🍷',
+  },
+];
+
+const DEFAULT_STATE: AppState = {
+  entries: [],
+  favourites: DEFAULT_FAVOURITES,
+  dailyCalorieGoal: 3300,
+  dailyProteinGoal: 160,
+  dailyWaterGoalMl: 2000,
+};
+
+export function loadState(): AppState {
+  if (typeof window === 'undefined') return DEFAULT_STATE;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return DEFAULT_STATE;
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_STATE, ...parsed };
+  } catch {
+    return DEFAULT_STATE;
+  }
 }
 
-export interface FavouriteFood {
-  id: string;
-  name: string;
-  type: EntryType;
-  calories: number;
-  protein?: number;
-  quantity: number;
-  unit: string;
-  ml?: number;
-  alcoholUnits?: number;
-  emoji?: string;
+export function saveState(state: AppState): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    console.error('Failed to save state');
+  }
 }
 
-export interface DayLog {
-  date: string;
-  entries: LogEntry[];
-  totalCalories: number;
-  totalProtein: number;
-  totalWaterMl: number;
-  totalAlcoholUnits: number;
+export function generateId(): string {
+  return `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export interface AppState {
-  entries: LogEntry[];
-  favourites: FavouriteFood[];
-  dailyCalorieGoal: number;
-  dailyProteinGoal: number;
-  dailyWaterGoalMl: number;
+export function getTodayStr(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+export function getEntriesForDate(entries: LogEntry[], date: string): LogEntry[] {
+  return entries
+    .filter(e => e.date === date)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
+
+export function sumCalories(entries: LogEntry[]): number {
+  return entries.reduce((sum, e) => sum + e.calories, 0);
+}
+
+export function sumProtein(entries: LogEntry[]): number {
+  return entries.reduce((sum, e) => sum + (e.protein || 0), 0);
+}
+
+export function sumWaterMl(entries: LogEntry[]): number {
+  return entries
+    .filter(e => e.type === 'water' || e.type === 'drink')
+    .reduce((sum, e) => sum + (e.ml || 0), 0);
+}
+
+export function sumAlcoholUnits(entries: LogEntry[]): number {
+  return entries
+    .filter(e => e.type === 'alcohol')
+    .reduce((sum, e) => sum + (e.alcoholUnits || 0), 0);
+}
+
+export function getLast7Days(): string[] {
+  const days: string[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().split('T')[0]);
+  }
+  return days;
+}
+
+export function getLast30Days(): string[] {
+  const days: string[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().split('T')[0]);
+  }
+  return days;
+}
+
+export function formatDateStr(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
 }
