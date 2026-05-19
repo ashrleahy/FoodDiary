@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, LogEntry, FavouriteFood } from '@/lib/types';
-import { loadFromBlob, saveToBlob, generateId, getTodayStr, getEntriesForDate, sumCalories, sumProtein, sumWaterMl, sumAlcoholUnits, DEFAULT_STATE } from '@/lib/storage';
+import { loadFromBlob, saveToBlob, generateId, getTodayStr, getEntriesForDate, sumCalories, sumProtein, sumWaterMl, sumAlcoholUnits } from '@/lib/storage';
 import LogForm from '@/components/LogForm';
 import TodayFeed from '@/components/TodayFeed';
 import HistoryView from '@/components/HistoryView';
@@ -13,65 +13,33 @@ import { UtensilsCrossed, History, Star, Settings } from 'lucide-react';
 type Tab = 'today' | 'history' | 'favourites' | 'settings';
 
 export default function Home() {
-  const [passphrase, setPassphrase] = useState<string | null>(null);
-  const [passphraseInput, setPassphraseInput] = useState('');
-  const [authError, setAuthError] = useState('');
   const [state, setState] = useState<AppState | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('today');
   const [showLogForm, setShowLogForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // Load passphrase from sessionStorage on mount
   useEffect(() => {
-    const stored = sessionStorage.getItem('fdp');
-    if (stored) setPassphrase(stored);
+    loadFromBlob().then(data => setState(data));
   }, []);
 
-  // Load data when passphrase is set
-  useEffect(() => {
-    if (!passphrase) return;
-    loadFromBlob(passphrase).then(data => {
-      if (data === null) {
-        setAuthError('Wrong passphrase');
-        setPassphrase(null);
-        sessionStorage.removeItem('fdp');
-      } else {
-        setState(data);
-      }
-    });
-  }, [passphrase]);
-
-  const handleLogin = async () => {
-    setAuthError('');
-    const res = await fetch('/api/data', {
-      headers: { 'x-passphrase': passphraseInput },
-    });
-    if (res.status === 401) {
-      setAuthError('Wrong passphrase, try again.');
-      return;
-    }
-    sessionStorage.setItem('fdp', passphraseInput);
-    setPassphrase(passphraseInput);
-  };
-
-  const persistState = useCallback((newState: AppState, phrase: string) => {
+  const persistState = useCallback((newState: AppState) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     setSaving(true);
     saveTimer.current = setTimeout(async () => {
-      await saveToBlob(phrase, newState);
+      await saveToBlob(newState);
       setSaving(false);
     }, 1000);
   }, []);
 
   const updateState = useCallback((updates: Partial<AppState>) => {
     setState(prev => {
-      if (!prev || !passphrase) return prev;
+      if (!prev) return prev;
       const next = { ...prev, ...updates };
-      persistState(next, passphrase);
+      persistState(next);
       return next;
     });
-  }, [passphrase, persistState]);
+  }, [persistState]);
 
   const addEntry = useCallback((entry: Omit<LogEntry, 'id' | 'date' | 'timestamp'>) => {
     const today = getTodayStr();
@@ -82,41 +50,41 @@ export default function Home() {
       timestamp: new Date().toISOString(),
     };
     setState(prev => {
-      if (!prev || !passphrase) return prev;
+      if (!prev) return prev;
       const next = { ...prev, entries: [newEntry, ...prev.entries] };
-      persistState(next, passphrase);
+      persistState(next);
       return next;
     });
     setShowLogForm(false);
-  }, [passphrase, persistState]);
+  }, [persistState]);
 
   const deleteEntry = useCallback((id: string) => {
     setState(prev => {
-      if (!prev || !passphrase) return prev;
+      if (!prev) return prev;
       const next = { ...prev, entries: prev.entries.filter(e => e.id !== id) };
-      persistState(next, passphrase);
+      persistState(next);
       return next;
     });
-  }, [passphrase, persistState]);
+  }, [persistState]);
 
   const addFavourite = useCallback((fav: Omit<FavouriteFood, 'id'>) => {
     const newFav: FavouriteFood = { ...fav, id: generateId() };
     setState(prev => {
-      if (!prev || !passphrase) return prev;
+      if (!prev) return prev;
       const next = { ...prev, favourites: [...prev.favourites, newFav] };
-      persistState(next, passphrase);
+      persistState(next);
       return next;
     });
-  }, [passphrase, persistState]);
+  }, [persistState]);
 
   const deleteFavourite = useCallback((id: string) => {
     setState(prev => {
-      if (!prev || !passphrase) return prev;
+      if (!prev) return prev;
       const next = { ...prev, favourites: prev.favourites.filter(f => f.id !== id) };
-      persistState(next, passphrase);
+      persistState(next);
       return next;
     });
-  }, [passphrase, persistState]);
+  }, [persistState]);
 
   const logFavourite = useCallback((fav: FavouriteFood) => {
     addEntry({
@@ -132,36 +100,6 @@ export default function Home() {
       isFavourite: true,
     });
   }, [addEntry]);
-
-  // Login screen
-  if (!passphrase) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
-        <div className="card p-8 w-full max-w-sm">
-          <div className="mb-6 text-center">
-            <span className="mono font-medium text-2xl" style={{ color: 'var(--accent-green)' }}>cal</span>
-            <span className="mono font-medium text-2xl" style={{ color: 'var(--text-secondary)' }}>tracker</span>
-            <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>Enter your passphrase to continue</p>
-          </div>
-          <div className="space-y-3">
-            <input
-              className="input-base"
-              type="password"
-              placeholder="Passphrase"
-              value={passphraseInput}
-              onChange={e => setPassphraseInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleLogin(); }}
-              autoFocus
-            />
-            {authError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{authError}</p>}
-            <button className="btn-primary w-full" onClick={handleLogin} disabled={!passphraseInput}>
-              Continue
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (!state) {
     return (
@@ -315,16 +253,12 @@ export default function Home() {
                   a.download = `caltracker_export_${getTodayStr()}.json`;
                   a.click();
                 }}>Export JSON</button>
-                <button className="btn-ghost text-sm" style={{ color: 'var(--accent-red)', borderColor: 'var(--accent-red)' }}
-                  onClick={() => { if (confirm('Clear all logged entries? Favourites will be kept.')) updateState({ entries: [] }); }}>
+                <button
+                  className="btn-ghost text-sm"
+                  style={{ color: 'var(--accent-red)', borderColor: 'var(--accent-red)' }}
+                  onClick={() => { if (confirm('Clear all logged entries? Favourites will be kept.')) updateState({ entries: [] }); }}
+                >
                   Clear entries
-                </button>
-                <button className="btn-ghost text-sm" onClick={() => {
-                  sessionStorage.removeItem('fdp');
-                  setPassphrase(null);
-                  setState(null);
-                }}>
-                  Lock
                 </button>
               </div>
             </div>
