@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { LogEntry, FavouriteFood, EntryType } from '@/lib/types';
 import { X, Sparkles, Loader } from 'lucide-react';
+import { getTodayStr, getDateStr, formatDateStr } from '@/lib/storage';
 
 interface LogFormProps {
   favourites: FavouriteFood[];
@@ -23,10 +24,8 @@ const TYPE_OPTIONS: { value: EntryType; label: string; emoji: string }[] = [
 function getDateOptions(): { value: string; label: string }[] {
   const options = [];
   for (let i = 0; i < 7; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const value = d.toISOString().split('T')[0];
-    const label = i === 0 ? 'Today' : i === 1 ? 'Yesterday' : d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+    const value = getDateStr(i);
+    const label = i === 0 ? 'Today' : i === 1 ? 'Yesterday' : formatDateStr(value);
     options.push({ value, label });
   }
   return options;
@@ -35,14 +34,7 @@ function getDateOptions(): { value: string; label: string }[] {
 export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite }: LogFormProps) {
   const [mode, setMode] = useState<Mode>('ai');
   const [type, setType] = useState<EntryType>('meal');
-const [selectedDate, setSelectedDate] = useState(() => {
-  const now = new Date();
-  const adelaideTime = new Date(now.toLocaleString('en-US', { timeZone: 'Australia/Adelaide' }));
-  const y = adelaideTime.getFullYear();
-  const m = String(adelaideTime.getMonth() + 1).padStart(2, '0');
-  const d = String(adelaideTime.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-});
+  const [selectedDate, setSelectedDate] = useState(() => getTodayStr());
   const [description, setDescription] = useState('');
   const [manualName, setManualName] = useState('');
   const [manualCals, setManualCals] = useState('');

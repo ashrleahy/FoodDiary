@@ -65,13 +65,29 @@ export function generateId(): string {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
+// All diary dates are Adelaide calendar dates (YYYY-MM-DD), regardless of
+// where the code runs. Never derive a date with toISOString() on "now" — that
+// gives the UTC date, which lags Adelaide until 9:30/10:30am.
+const ADELAIDE_DATE = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Australia/Adelaide',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
 export function getTodayStr(): string {
-  return new Date().toLocaleDateString('en-AU', {
-    timeZone: 'Australia/Adelaide',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).split('/').reverse().join('-');
+  return ADELAIDE_DATE.format(new Date());
+}
+
+// Pure calendar arithmetic on a YYYY-MM-DD string (no time zone involved).
+export function addDays(dateStr: string, n: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
+// Adelaide date `daysAgo` days before today.
+export function getDateStr(daysAgo = 0): string {
+  return addDays(getTodayStr(), -daysAgo);
 }
 
 export function getEntriesForDate(entries: LogEntry[], date: string): LogEntry[] {
@@ -100,24 +116,18 @@ export function sumAlcoholUnits(entries: LogEntry[]): number {
     .reduce((sum, e) => sum + (e.alcoholUnits || 0), 0);
 }
 
-export function getLast7Days(): string[] {
+function getLastNDays(n: number): string[] {
   const days: string[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    days.push(d.toISOString().split('T')[0]);
-  }
+  for (let i = n - 1; i >= 0; i--) days.push(getDateStr(i));
   return days;
 }
 
+export function getLast7Days(): string[] {
+  return getLastNDays(7);
+}
+
 export function getLast30Days(): string[] {
-  const days: string[] = [];
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    days.push(d.toISOString().split('T')[0]);
-  }
-  return days;
+  return getLastNDays(30);
 }
 
 export function formatDateStr(dateStr: string): string {
