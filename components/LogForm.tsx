@@ -116,6 +116,7 @@ export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite 
       alcoholUnits: fav.alcoholUnits,
       isAIEstimated: false,
       isFavourite: true,
+      favouriteId: fav.id,
     });
   };
 

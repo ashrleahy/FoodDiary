@@ -130,6 +130,31 @@ export function getLast30Days(): string[] {
   return getLastNDays(30);
 }
 
+// Order favourites by how often they were logged in the last 30 days, then by
+// most recent use, then by the order they were added. Matches on favouriteId,
+// or on name for entries logged before favouriteId existed.
+export function sortFavouritesByUse(favourites: FavouriteFood[], entries: LogEntry[]): FavouriteFood[] {
+  const cutoff = getDateStr(29);
+  const byId = new Map(favourites.map(f => [f.id, f]));
+  const byName = new Map(favourites.map(f => [f.name.trim().toLowerCase(), f]));
+  const count = new Map<string, number>();
+  const lastUsed = new Map<string, string>();
+
+  for (const e of entries) {
+    const fav = (e.favouriteId && byId.get(e.favouriteId)) || byName.get(e.name.trim().toLowerCase());
+    if (!fav) continue;
+    if (e.timestamp > (lastUsed.get(fav.id) ?? '')) lastUsed.set(fav.id, e.timestamp);
+    if (e.date >= cutoff) count.set(fav.id, (count.get(fav.id) ?? 0) + 1);
+  }
+
+  const order = new Map(favourites.map((f, i) => [f.id, i]));
+  return [...favourites].sort((a, b) =>
+    (count.get(b.id) ?? 0) - (count.get(a.id) ?? 0) ||
+    (lastUsed.get(b.id) ?? '').localeCompare(lastUsed.get(a.id) ?? '') ||
+    order.get(a.id)! - order.get(b.id)!
+  );
+}
+
 export function formatDateStr(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });

@@ -13,6 +13,7 @@ export interface LogEntry {
   unit?: string;
   isAIEstimated: boolean;
   isFavourite?: boolean;
+  favouriteId?: string; // set when logged from a favourite (older entries only have the name)
   ml?: number;
   alcoholUnits?: number;
 }

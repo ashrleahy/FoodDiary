@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { FavouriteFood, EntryType } from '@/lib/types';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, Pencil } from 'lucide-react';
 
 interface FavouritesManagerProps {
   favourites: FavouriteFood[];
   onAdd: (fav: Omit<FavouriteFood, 'id'>) => void;
+  onUpdate: (fav: FavouriteFood) => void;
   onDelete: (id: string) => void;
   onLog: (fav: FavouriteFood) => void;
 }
@@ -20,8 +21,9 @@ const TYPE_OPTIONS: { value: EntryType; label: string; emoji: string }[] = [
 
 const EMOJI_OPTIONS = ['🍽️', '🥩', '🍗', '🐟', '🥗', '🥙', '🌮', '🍜', '🍣', '🍱', '🥚', '🧇', '🥞', '🍞', '🧀', '🍕', '🍔', '🌯', '🥣', '🫐', '🥤', '☕', '🧋', '🍵', '🧃', '💧', '🍺', '🍻', '🍷', '🥂', '🍸', '🥃'];
 
-export default function FavouritesManager({ favourites, onAdd, onDelete, onLog }: FavouritesManagerProps) {
+export default function FavouritesManager({ favourites, onAdd, onUpdate, onDelete, onLog }: FavouritesManagerProps) {
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [type, setType] = useState<EntryType>('meal');
   const [calories, setCalories] = useState('');
@@ -39,41 +41,47 @@ export default function FavouritesManager({ favourites, onAdd, onDelete, onLog }
   const resetForm = () => {
     setName(''); setCalories(''); setProtein(''); setQuantity('1');
     setUnit('serving'); setMl(''); setAlcoholUnits(''); setEmoji('🍽️');
+    setShowForm(false); setEditingId(null); setShowEmojiPicker(false);
+  };
+
+  const startEdit = (fav: FavouriteFood) => {
     setShowForm(false);
+    setEditingId(fav.id);
+    setName(fav.name);
+    setType(fav.type);
+    setCalories(String(fav.calories));
+    setProtein(fav.protein != null ? String(fav.protein) : '');
+    setQuantity(String(fav.quantity ?? 1));
+    setUnit(fav.unit || 'serving');
+    setMl(fav.ml != null ? String(fav.ml) : '');
+    setAlcoholUnits(fav.alcoholUnits != null ? String(fav.alcoholUnits) : '');
+    setEmoji(fav.emoji || '🍽️');
+    setShowEmojiPicker(false);
   };
 
   const handleSubmit = () => {
     const cals = parseInt(calories);
     if (!name.trim() || isNaN(cals)) return;
-    onAdd({
+    const isLiquid = type === 'drink' || type === 'water' || type === 'alcohol';
+    const fields = {
       name: name.trim(),
       type,
       calories: cals,
       protein: protein ? parseInt(protein) : undefined,
       quantity: parseFloat(quantity) || 1,
       unit: unit.trim() || 'serving',
-      ml: ml ? parseInt(ml) : undefined,
-      alcoholUnits: alcoholUnits ? parseFloat(alcoholUnits) : undefined,
+      ml: isLiquid && ml ? parseInt(ml) : undefined,
+      alcoholUnits: type === 'alcohol' && alcoholUnits ? parseFloat(alcoholUnits) : undefined,
       emoji,
-    });
+    };
+    if (editingId) onUpdate({ id: editingId, ...fields });
+    else onAdd(fields);
     resetForm();
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          {favourites.length} favourite{favourites.length !== 1 ? 's' : ''}
-        </p>
-        <button className="btn-primary flex items-center gap-1.5 text-sm" onClick={() => setShowForm(!showForm)}>
-          <Plus size={14} /> Add favourite
-        </button>
-      </div>
-
-      {/* Add form */}
-      {showForm && (
+  const renderForm = () => (
         <div className="card p-4 fade-in space-y-3">
-          <h3 className="font-semibold text-sm">New favourite</h3>
+          <h3 className="font-semibold text-sm">{editingId ? 'Edit favourite' : 'New favourite'}</h3>
 
           {/* Emoji + name */}
           <div className="flex gap-2">
@@ -141,12 +149,25 @@ export default function FavouritesManager({ favourites, onAdd, onDelete, onLog }
 
           <div className="flex gap-2">
             <button className="btn-primary flex-1" onClick={handleSubmit} disabled={!name.trim() || !calories}>
-              Save favourite
+              {editingId ? 'Save changes' : 'Save favourite'}
             </button>
             <button className="btn-ghost" onClick={resetForm}>Cancel</button>
           </div>
         </div>
-      )}
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+          {favourites.length} favourite{favourites.length !== 1 ? 's' : ''}
+        </p>
+        <button className="btn-primary flex items-center gap-1.5 text-sm" onClick={() => { if (showForm) resetForm(); else { resetForm(); setShowForm(true); } }}>
+          <Plus size={14} /> Add favourite
+        </button>
+      </div>
+
+      {showForm && !editingId && renderForm()}
 
       {/* Filter */}
       <div className="flex gap-1.5 flex-wrap">
@@ -174,7 +195,9 @@ export default function FavouritesManager({ favourites, onAdd, onDelete, onLog }
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map(fav => (
+          {filtered.map(fav => editingId === fav.id ? (
+            <div key={fav.id}>{renderForm()}</div>
+          ) : (
             <div key={fav.id} className="card card-hover flex items-center justify-between gap-3" style={{ padding: '10px 14px' }}>
               <div className="flex items-center gap-3 flex-1">
                 <span style={{ fontSize: 24 }}>{fav.emoji || '🍽️'}</span>
@@ -202,7 +225,10 @@ export default function FavouritesManager({ favourites, onAdd, onDelete, onLog }
                 }}>
                   Log
                 </button>
-                <button onClick={() => onDelete(fav.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4 }}>
+                <button onClick={() => startEdit(fav)} aria-label={`Edit ${fav.name}`} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4 }}>
+                  <Pencil size={14} />
+                </button>
+                <button onClick={() => { if (confirm(`Delete "${fav.name}"?`)) onDelete(fav.id); }} aria-label={`Delete ${fav.name}`} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 4 }}>
                   <Trash2 size={14} />
                 </button>
               </div>

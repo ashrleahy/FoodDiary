@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, LogEntry, FavouriteFood } from '@/lib/types';
-import { loadFromBlob, saveToBlob, generateId, getTodayStr, getEntriesForDate, sumCalories, sumProtein, sumWaterMl, sumAlcoholUnits } from '@/lib/storage';
+import { loadFromBlob, saveToBlob, generateId, getTodayStr, getEntriesForDate, sumCalories, sumProtein, sumWaterMl, sumAlcoholUnits, sortFavouritesByUse } from '@/lib/storage';
 import LogForm from '@/components/LogForm';
 import TodayFeed from '@/components/TodayFeed';
 import HistoryView from '@/components/HistoryView';
@@ -75,6 +75,15 @@ export default function Home() {
     });
   }, [persistState]);
 
+  const updateFavourite = useCallback((fav: FavouriteFood) => {
+    setState(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, favourites: prev.favourites.map(f => f.id === fav.id ? fav : f) };
+      persistState(next);
+      return next;
+    });
+  }, [persistState]);
+
   const deleteFavourite = useCallback((id: string) => {
     setState(prev => {
       if (!prev) return prev;
@@ -97,6 +106,7 @@ export default function Home() {
       alcoholUnits: fav.alcoholUnits,
       isAIEstimated: false,
       isFavourite: true,
+      favouriteId: fav.id,
     });
   }, [addEntry]);
 
@@ -114,6 +124,7 @@ export default function Home() {
   const todayProtein = sumProtein(todayEntries);
   const todayWater = sumWaterMl(todayEntries);
   const todayAlcohol = sumAlcoholUnits(todayEntries);
+  const sortedFavourites = sortFavouritesByUse(state.favourites, state.entries);
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'today', label: 'Today', icon: <UtensilsCrossed size={15} /> },
@@ -178,7 +189,7 @@ export default function Home() {
               <div>
                 <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Quick log</p>
                 <div className="flex gap-2 overflow-x-auto pb-1">
-                  {state.favourites.slice(0, 10).map(fav => (
+                  {sortedFavourites.slice(0, 10).map(fav => (
                     <button
                       key={fav.id}
                       onClick={() => logFavourite(fav)}
@@ -207,8 +218,9 @@ export default function Home() {
         {activeTab === 'favourites' && (
           <div className="fade-in">
             <FavouritesManager
-              favourites={state.favourites}
+              favourites={sortedFavourites}
               onAdd={addFavourite}
+              onUpdate={updateFavourite}
               onDelete={deleteFavourite}
               onLog={logFavourite}
             />
@@ -273,7 +285,7 @@ export default function Home() {
 
       {showLogForm && (
         <LogForm
-          favourites={state.favourites}
+          favourites={sortedFavourites}
           onSubmit={addEntry}
           onClose={() => setShowLogForm(false)}
           onLogFavourite={logFavourite}
