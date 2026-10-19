@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { FavouriteFood, EntryType } from '@/lib/types';
-import { Trash2, Plus, Pencil } from 'lucide-react';
+import { Trash2, Plus, Pencil, ClipboardPaste } from 'lucide-react';
+import { parseFavouritesList } from '@/lib/importFavourites';
 
 interface FavouritesManagerProps {
   favourites: FavouriteFood[];
   onAdd: (fav: Omit<FavouriteFood, 'id'>) => void;
   onUpdate: (fav: FavouriteFood) => void;
+  onImport: (items: Omit<FavouriteFood, 'id'>[], mode: 'replace' | 'merge') => void;
   onDelete: (id: string) => void;
   onLog: (fav: FavouriteFood) => void;
 }
@@ -21,8 +23,18 @@ const TYPE_OPTIONS: { value: EntryType; label: string; emoji: string }[] = [
 
 const EMOJI_OPTIONS = ['🍽️', '🥩', '🍗', '🐟', '🥗', '🥙', '🌮', '🍜', '🍣', '🍱', '🥚', '🧇', '🥞', '🍞', '🧀', '🍕', '🍔', '🌯', '🥣', '🫐', '🥤', '☕', '🧋', '🍵', '🧃', '💧', '🍺', '🍻', '🍷', '🥂', '🍸', '🥃'];
 
-export default function FavouritesManager({ favourites, onAdd, onUpdate, onDelete, onLog }: FavouritesManagerProps) {
+export default function FavouritesManager({ favourites, onAdd, onUpdate, onImport, onDelete, onLog }: FavouritesManagerProps) {
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState('');
+  const parsed = importText.trim() ? parseFavouritesList(importText) : { items: [], skipped: [] };
+  const existingNames = new Set(favourites.map(f => f.name.trim().toLowerCase()));
+  const doImport = (mode: 'replace' | 'merge') => {
+    if (!parsed.items.length) return;
+    if (mode === 'replace' && !confirm(`Replace all ${favourites.length} favourites with these ${parsed.items.length}?`)) return;
+    onImport(parsed.items, mode);
+    setImportText(''); setShowImport(false);
+  };
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [type, setType] = useState<EntryType>('meal');
@@ -162,10 +174,67 @@ export default function FavouritesManager({ favourites, onAdd, onUpdate, onDelet
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
           {favourites.length} favourite{favourites.length !== 1 ? 's' : ''}
         </p>
-        <button className="btn-primary flex items-center gap-1.5 text-sm" onClick={() => { if (showForm) resetForm(); else { resetForm(); setShowForm(true); } }}>
-          <Plus size={14} /> Add favourite
-        </button>
+        <div className="flex gap-2">
+          <button className="btn-ghost flex items-center gap-1.5 text-sm" onClick={() => { resetForm(); setShowImport(!showImport); }}>
+            <ClipboardPaste size={14} /> Paste list
+          </button>
+          <button className="btn-primary flex items-center gap-1.5 text-sm" onClick={() => { setShowImport(false); if (showForm) resetForm(); else { resetForm(); setShowForm(true); } }}>
+            <Plus size={14} /> Add favourite
+          </button>
+        </div>
       </div>
+
+      {showImport && (
+        <div className="card p-4 fade-in space-y-3">
+          <h3 className="font-semibold text-sm">Paste favourites</h3>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            One per line: name, calories, protein — copied from a spreadsheet (tab-separated) or comma-separated. Header rows are ignored.
+          </p>
+          <textarea
+            className="input-base"
+            rows={8}
+            placeholder={'Protein Shake\t220\t30\nTacos\t750\t50'}
+            value={importText}
+            onChange={e => setImportText(e.target.value)}
+            style={{ fontFamily: 'var(--font-display)', fontSize: 12, resize: 'vertical' }}
+          />
+          {parsed.items.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {parsed.items.length} item{parsed.items.length !== 1 ? 's' : ''} read
+                {parsed.skipped.length > 0 && ` · ${parsed.skipped.length} line${parsed.skipped.length !== 1 ? 's' : ''} skipped`}
+                {' '}· type guessed from the name, edit any afterwards
+              </p>
+              <div style={{ maxHeight: 220, overflowY: 'auto' }} className="space-y-1">
+                {parsed.items.map((it, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs" style={{ padding: '4px 2px', borderBottom: '1px solid var(--border)' }}>
+                    <span>
+                      {it.emoji} {it.name}
+                      <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>{it.type}</span>
+                      {existingNames.has(it.name.trim().toLowerCase()) && (
+                        <span style={{ color: 'var(--accent-amber)', marginLeft: 6 }}>updates existing</span>
+                      )}
+                    </span>
+                    <span className="mono">
+                      <span style={{ color: 'var(--accent-green)' }}>{it.calories}k</span>
+                      {it.protein ? <span style={{ color: 'var(--accent-purple)', marginLeft: 6 }}>{it.protein}p</span> : null}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex gap-2 flex-wrap">
+            <button className="btn-primary flex-1" disabled={!parsed.items.length} onClick={() => doImport('replace')}>
+              Replace all
+            </button>
+            <button className="btn-ghost flex-1" disabled={!parsed.items.length} onClick={() => doImport('merge')}>
+              Update &amp; add
+            </button>
+            <button className="btn-ghost" onClick={() => { setImportText(''); setShowImport(false); }}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {showForm && !editingId && renderForm()}
 

@@ -84,6 +84,36 @@ export default function Home() {
     });
   }, [persistState]);
 
+  // mode 'replace': the pasted list becomes the full favourites list.
+  // mode 'merge': update calories/protein where the name already exists, add the rest.
+  // Either way, an existing favourite with the same name keeps its id (so usage
+  // counts carry over) and its ml / std drinks / emoji / unit unless the import has them.
+  const importFavourites = useCallback((items: Omit<FavouriteFood, 'id'>[], mode: 'replace' | 'merge') => {
+    setState(prev => {
+      if (!prev) return prev;
+      const key = (n: string) => n.trim().toLowerCase();
+      const existing = new Map(prev.favourites.map(f => [key(f.name), f]));
+      const merged = items.map(item => {
+        const old = existing.get(key(item.name));
+        if (!old) return { ...item, id: generateId() };
+        return {
+          ...old,
+          name: item.name,
+          calories: item.calories,
+          protein: item.protein ?? old.protein,
+          type: item.type === 'meal' && old.type !== 'meal' ? old.type : item.type,
+        };
+      });
+      const importedKeys = new Set(items.map(i => key(i.name)));
+      const favourites = mode === 'replace'
+        ? merged
+        : [...prev.favourites.filter(f => !importedKeys.has(key(f.name))), ...merged];
+      const next = { ...prev, favourites };
+      persistState(next);
+      return next;
+    });
+  }, [persistState]);
+
   const deleteFavourite = useCallback((id: string) => {
     setState(prev => {
       if (!prev) return prev;
@@ -221,6 +251,7 @@ export default function Home() {
               favourites={sortedFavourites}
               onAdd={addFavourite}
               onUpdate={updateFavourite}
+              onImport={importFavourites}
               onDelete={deleteFavourite}
               onLog={logFavourite}
             />
