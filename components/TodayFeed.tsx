@@ -71,7 +71,6 @@ export default function TodayFeed({ entries, onDelete }: TodayFeedProps) {
                   <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatTime(entry.timestamp)}</span>
                   {entry.protein ? <span className="text-xs mono" style={{ color: 'var(--accent-purple)' }}>{entry.protein}g protein</span> : null}
                   {entry.ml ? <span className="text-xs" style={{ color: 'var(--text-muted)' }}>💧 {entry.ml}ml</span> : null}
-                  {entry.alcoholUnits ? <span className="text-xs" style={{ color: 'var(--text-muted)' }}>🍺 {entry.alcoholUnits} std</span> : null}
                 </div>
               </div>
             </div>

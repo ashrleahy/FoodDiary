@@ -4,7 +4,6 @@ interface DayStatsProps {
   calories: number;
   protein: number;
   waterMl: number;
-  alcoholUnits: number;
   calorieGoal: number;
   proteinGoal: number;
   waterGoalMl: number;
@@ -29,7 +28,7 @@ function Ring({ value, max, color, size = 64 }: { value: number; max: number; co
   );
 }
 
-export default function DayStats({ calories, protein, waterMl, alcoholUnits, calorieGoal, proteinGoal, waterGoalMl }: DayStatsProps) {
+export default function DayStats({ calories, protein, waterMl, calorieGoal, proteinGoal, waterGoalMl }: DayStatsProps) {
   const remaining = calorieGoal - calories;
   const calPct = Math.round((calories / calorieGoal) * 100);
   const proteinPct = Math.round((protein / proteinGoal) * 100);
@@ -70,7 +69,7 @@ export default function DayStats({ calories, protein, waterMl, alcoholUnits, cal
       </div>
 
       {/* Secondary stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {/* Protein */}
         <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
           <div className="flex items-center gap-1.5 mb-1">
@@ -111,28 +110,6 @@ export default function DayStats({ calories, protein, waterMl, alcoholUnits, cal
               transition: 'width 0.4s ease',
             }} />
           </div>
-        </div>
-
-        {/* Alcohol */}
-        <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
-          <div className="flex items-center gap-1.5 mb-1">
-            <span>🍺</span>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Alcohol</span>
-          </div>
-          <div className="mono font-medium" style={{ fontSize: 18, color: alcoholUnits > 2 ? 'var(--accent-amber)' : 'var(--text-secondary)' }}>
-            {alcoholUnits.toFixed(1)}
-          </div>
-          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>std drinks</div>
-          {alcoholUnits > 0 && (
-            <div className="flex gap-0.5 mt-2 flex-wrap">
-              {Array.from({ length: Math.min(Math.ceil(alcoholUnits), 10) }).map((_, i) => (
-                <div key={i} style={{
-                  width: 6, height: 6, borderRadius: 1,
-                  background: i < 2 ? 'var(--accent-green)' : i < 4 ? 'var(--accent-amber)' : 'var(--accent-red)',
-                }} />
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>

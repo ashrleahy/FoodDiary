@@ -1,61 +1,33 @@
 import { AppState, LogEntry, FavouriteFood } from './types';
 
+// Master favourites list. Bump MASTER_FAVOURITES_VERSION after editing this
+// list to push it to existing data on next load (see applyMasterFavourites).
+export const MASTER_FAVOURITES_VERSION = 1;
+
 const DEFAULT_FAVOURITES: FavouriteFood[] = [
-  {
-    id: 'fav_1', name: 'Weetbix Bowl', type: 'meal',
-    calories: 485, protein: 52,
-    quantity: 1, unit: 'bowl', emoji: '🥣',
-  },
-  {
-    id: 'fav_2', name: 'Protein Shake', type: 'drink',
-    calories: 335, protein: 45,
-    quantity: 1, unit: 'shake', ml: 350, emoji: '🥤',
-  },
-  {
-    id: 'fav_3', name: 'Pre Pack Lunch', type: 'meal',
-    calories: 400, protein: 30,
-    quantity: 1, unit: 'pack', emoji: '🍱',
-  },
-  {
-    id: 'fav_4', name: 'Yoghurt & Berries', type: 'meal',
-    calories: 230, protein: 10,
-    quantity: 1, unit: 'bowl', emoji: '🫐',
-  },
-  {
-    id: 'fav_5', name: 'Flat White', type: 'drink',
-    calories: 120, protein: 6,
-    quantity: 1, unit: 'cup', ml: 220, emoji: '☕',
-  },
-  {
-    id: 'fav_6', name: 'Instant Coffee', type: 'drink',
-    calories: 50, protein: 2,
-    quantity: 1, unit: 'cup', ml: 200, emoji: '☕',
-  },
-  {
-    id: 'fav_7', name: 'Coopers Mild Ale', type: 'alcohol',
-    calories: 105, protein: 1,
-    quantity: 1, unit: 'can', ml: 375, alcoholUnits: 1.0, emoji: '🍺',
-  },
-  {
-    id: 'fav_8', name: 'Coopers Pale Ale', type: 'alcohol',
-    calories: 135, protein: 2,
-    quantity: 1, unit: 'can', ml: 375, alcoholUnits: 1.4, emoji: '🍺',
-  },
-  {
-    id: 'fav_9', name: 'Heineken', type: 'alcohol',
-    calories: 140, protein: 2,
-    quantity: 1, unit: 'bottle', ml: 330, alcoholUnits: 1.3, emoji: '🍺',
-  },
-  {
-    id: 'fav_10', name: 'Red Wine (large)', type: 'alcohol',
-    calories: 150, protein: 0,
-    quantity: 1, unit: 'glass', ml: 180, alcoholUnits: 2.1, emoji: '🍷',
-  },
+  { id: 'master_1', name: 'Yoghurt - Pouch/Tub', type: 'meal', calories: 95, protein: 15, quantity: 1, unit: 'serve', emoji: '🫐' },
+  { id: 'master_2', name: 'Yoghurt and Berries', type: 'meal', calories: 180, protein: 25, quantity: 1, unit: 'serve', emoji: '🫐' },
+  { id: 'master_3', name: 'Coopers Mild', type: 'alcohol', calories: 127, protein: 1, quantity: 1, unit: 'serve', emoji: '🍺' },
+  { id: 'master_4', name: 'XXXX Gold', type: 'alcohol', calories: 109, protein: 1, quantity: 1, unit: 'serve', emoji: '🍺' },
+  { id: 'master_5', name: 'Heineken Silver', type: 'alcohol', calories: 88, protein: 1, quantity: 1, unit: 'serve', emoji: '🍺' },
+  { id: 'master_6', name: 'Coopers Pale', type: 'alcohol', calories: 145, protein: 1, quantity: 1, unit: 'serve', emoji: '🍺' },
+  { id: 'master_7', name: 'Heineken Lager', type: 'alcohol', calories: 132, protein: 1, quantity: 1, unit: 'serve', emoji: '🍺' },
+  { id: 'master_8', name: 'Spaghetti Bolognese', type: 'meal', calories: 1100, protein: 70, quantity: 1, unit: 'serve', emoji: '🍜' },
+  { id: 'master_9', name: 'Ragu Pasta', type: 'meal', calories: 900, protein: 55, quantity: 1, unit: 'serve', emoji: '🍜' },
+  { id: 'master_10', name: 'Protein Shake', type: 'drink', calories: 220, protein: 30, quantity: 1, unit: 'serve', emoji: '🥤' },
+  { id: 'master_11', name: 'Red Wine', type: 'alcohol', calories: 125, quantity: 1, unit: 'serve', emoji: '🍷' },
+  { id: 'master_12', name: 'Home Flat White', type: 'drink', calories: 100, protein: 5, quantity: 1, unit: 'serve', emoji: '☕' },
+  { id: 'master_13', name: 'Burger', type: 'meal', calories: 1100, protein: 56, quantity: 1, unit: 'serve', emoji: '🍔' },
+  { id: 'master_14', name: 'Chocolate Milk', type: 'drink', calories: 170, protein: 8, quantity: 1, unit: 'serve', emoji: '🧃' },
+  { id: 'master_15', name: 'Instant Coffee', type: 'drink', calories: 50, protein: 2, quantity: 1, unit: 'serve', emoji: '☕' },
+  { id: 'master_16', name: 'Crusty Bread', type: 'meal', calories: 180, protein: 4, quantity: 1, unit: 'serve', emoji: '🍞' },
+  { id: 'master_17', name: 'Tacos', type: 'meal', calories: 750, protein: 50, quantity: 1, unit: 'serve', emoji: '🌮' },
 ];
 
 export const DEFAULT_STATE: AppState = {
   entries: [],
   favourites: DEFAULT_FAVOURITES,
+  favouritesVersion: MASTER_FAVOURITES_VERSION,
   dailyCalorieGoal: 3300,
   dailyProteinGoal: 160,
   dailyWaterGoalMl: 2000,
@@ -110,12 +82,6 @@ export function sumWaterMl(entries: LogEntry[]): number {
     .reduce((sum, e) => sum + (e.ml || 0), 0);
 }
 
-export function sumAlcoholUnits(entries: LogEntry[]): number {
-  return entries
-    .filter(e => e.type === 'alcohol')
-    .reduce((sum, e) => sum + (e.alcoholUnits || 0), 0);
-}
-
 function getLastNDays(n: number): string[] {
   const days: string[] = [];
   for (let i = n - 1; i >= 0; i--) days.push(getDateStr(i));
@@ -161,16 +127,31 @@ export function formatDateStr(dateStr: string): string {
 }
 
 // API helpers
-export async function loadFromBlob(): Promise<AppState> {
+// `loaded` is true only when real saved data came back. Callers must not run
+// one-off migrations that save when it's false, or defaults could overwrite the diary.
+export async function loadFromBlob(): Promise<{ state: AppState; loaded: boolean }> {
   try {
     const res = await fetch('/api/data');
     if (!res.ok) throw new Error('Failed to load');
     const data = await res.json();
-    if (!data) return DEFAULT_STATE;
-    return { ...DEFAULT_STATE, ...data };
+    if (!data) return { state: DEFAULT_STATE, loaded: false };
+    return { state: { ...DEFAULT_STATE, ...data }, loaded: true };
   } catch {
-    return DEFAULT_STATE;
+    return { state: DEFAULT_STATE, loaded: false };
   }
+}
+
+// Replace favourites with the master list once per MASTER_FAVOURITES_VERSION.
+// Existing favourites with the same name keep their id (usage history) and ml.
+export function applyMasterFavourites(state: AppState): { state: AppState; changed: boolean } {
+  if ((state.favouritesVersion ?? 0) >= MASTER_FAVOURITES_VERSION) return { state, changed: false };
+  const key = (n: string) => n.trim().toLowerCase();
+  const existing = new Map(state.favourites.map(f => [key(f.name), f]));
+  const favourites = DEFAULT_FAVOURITES.map(m => {
+    const old = existing.get(key(m.name));
+    return old ? { ...m, id: old.id, ml: old.ml } : { ...m };
+  });
+  return { state: { ...state, favourites, favouritesVersion: MASTER_FAVOURITES_VERSION }, changed: true };
 }
 
 export async function saveToBlob(state: AppState): Promise<void> {

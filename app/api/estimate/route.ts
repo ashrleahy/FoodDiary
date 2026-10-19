@@ -29,8 +29,7 @@ Respond with ONLY a JSON object in this exact format (no markdown, no explanatio
   "protein": <number - grams of protein>,
   "confidence": "low" | "medium" | "high",
   "notes": "<brief one-sentence note about your estimate>",
-  "ml": <number or null - liquid volume in ml if this is a drink>,
-  "alcoholUnits": <number or null - standard Australian drinks (10g alcohol each) if alcoholic>
+  "ml": <number or null - liquid volume in ml if this is a drink>
 }
 
 Use realistic Australian portion sizes. For meals, estimate a typical serving. Be conservative but realistic.`;

@@ -15,7 +15,6 @@ export interface LogEntry {
   isFavourite?: boolean;
   favouriteId?: string; // set when logged from a favourite (older entries only have the name)
   ml?: number;
-  alcoholUnits?: number;
 }
 
 export interface FavouriteFood {
@@ -27,7 +26,6 @@ export interface FavouriteFood {
   quantity: number;
   unit: string;
   ml?: number;
-  alcoholUnits?: number;
   emoji?: string;
 }
 
@@ -37,12 +35,12 @@ export interface DayLog {
   totalCalories: number;
   totalProtein: number;
   totalWaterMl: number;
-  totalAlcoholUnits: number;
 }
 
 export interface AppState {
   entries: LogEntry[];
   favourites: FavouriteFood[];
+  favouritesVersion?: number; // last master favourites list applied
   dailyCalorieGoal: number;
   dailyProteinGoal: number;
   dailyWaterGoalMl: number;

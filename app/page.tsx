@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, LogEntry, FavouriteFood } from '@/lib/types';
-import { loadFromBlob, saveToBlob, generateId, getTodayStr, getEntriesForDate, sumCalories, sumProtein, sumWaterMl, sumAlcoholUnits, sortFavouritesByUse } from '@/lib/storage';
+import { loadFromBlob, saveToBlob, applyMasterFavourites, generateId, getTodayStr, getEntriesForDate, sumCalories, sumProtein, sumWaterMl, sortFavouritesByUse } from '@/lib/storage';
 import LogForm from '@/components/LogForm';
 import TodayFeed from '@/components/TodayFeed';
 import HistoryView from '@/components/HistoryView';
@@ -20,7 +20,12 @@ export default function Home() {
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    loadFromBlob().then(data => setState(data));
+    loadFromBlob().then(({ state: data, loaded }) => {
+      if (!loaded) { setState(data); return; }
+      const { state: migrated, changed } = applyMasterFavourites(data);
+      setState(migrated);
+      if (changed) saveToBlob(migrated);
+    });
   }, []);
 
   const persistState = useCallback((newState: AppState) => {
@@ -87,7 +92,7 @@ export default function Home() {
   // mode 'replace': the pasted list becomes the full favourites list.
   // mode 'merge': update calories/protein where the name already exists, add the rest.
   // Either way, an existing favourite with the same name keeps its id (so usage
-  // counts carry over) and its ml / std drinks / emoji / unit unless the import has them.
+  // counts carry over) and its ml / emoji / unit unless the import has them.
   const importFavourites = useCallback((items: Omit<FavouriteFood, 'id'>[], mode: 'replace' | 'merge') => {
     setState(prev => {
       if (!prev) return prev;
@@ -133,7 +138,6 @@ export default function Home() {
       quantity: fav.quantity,
       unit: fav.unit,
       ml: fav.ml,
-      alcoholUnits: fav.alcoholUnits,
       isAIEstimated: false,
       isFavourite: true,
       favouriteId: fav.id,
@@ -153,7 +157,6 @@ export default function Home() {
   const todayCals = sumCalories(todayEntries);
   const todayProtein = sumProtein(todayEntries);
   const todayWater = sumWaterMl(todayEntries);
-  const todayAlcohol = sumAlcoholUnits(todayEntries);
   const sortedFavourites = sortFavouritesByUse(state.favourites, state.entries);
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -209,7 +212,6 @@ export default function Home() {
               calories={todayCals}
               protein={todayProtein}
               waterMl={todayWater}
-              alcoholUnits={todayAlcohol}
               calorieGoal={state.dailyCalorieGoal}
               proteinGoal={state.dailyProteinGoal}
               waterGoalMl={state.dailyWaterGoalMl}

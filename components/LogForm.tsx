@@ -40,9 +40,8 @@ export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite 
   const [manualCals, setManualCals] = useState('');
   const [manualProtein, setManualProtein] = useState('');
   const [manualMl, setManualMl] = useState('');
-  const [manualAlcohol, setManualAlcohol] = useState('');
   const [loading, setLoading] = useState(false);
-  const [estimate, setEstimate] = useState<{ calories: number; protein: number; confidence: string; notes: string; ml?: number; alcoholUnits?: number } | null>(null);
+  const [estimate, setEstimate] = useState<{ calories: number; protein: number; confidence: string; notes: string; ml?: number } | null>(null);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const dateOptions = getDateOptions();
@@ -83,7 +82,6 @@ export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite 
       calories: estimate.calories,
       protein: estimate.protein,
       ml: estimate.ml,
-      alcoholUnits: estimate.alcoholUnits,
       isAIEstimated: true,
     });
   };
@@ -98,7 +96,6 @@ export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite 
       calories: cals,
       protein: manualProtein ? parseInt(manualProtein) : undefined,
       ml: manualMl ? parseInt(manualMl) : undefined,
-      alcoholUnits: manualAlcohol ? parseFloat(manualAlcohol) : undefined,
       isAIEstimated: false,
     });
   };
@@ -113,7 +110,6 @@ export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite 
       quantity: fav.quantity,
       unit: fav.unit,
       ml: fav.ml,
-      alcoholUnits: fav.alcoholUnits,
       isAIEstimated: false,
       isFavourite: true,
       favouriteId: fav.id,
@@ -262,10 +258,9 @@ export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite 
                   {estimate.notes && (
                     <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{estimate.notes}</p>
                   )}
-                  {(estimate.ml || estimate.alcoholUnits) && (
+                  {estimate.ml && (
                     <div className="flex gap-3 mt-2">
                       {estimate.ml && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>💧 {estimate.ml}ml</span>}
-                      {estimate.alcoholUnits && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>🍺 {estimate.alcoholUnits} std drinks</span>}
                     </div>
                   )}
                   <button className="btn-primary w-full mt-3" onClick={handleAISubmit}>
@@ -298,7 +293,6 @@ export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite 
                         <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
                           {fav.quantity} {fav.unit}
                           {fav.ml ? ` · ${fav.ml}ml` : ''}
-                          {fav.alcoholUnits ? ` · ${fav.alcoholUnits} std` : ''}
                         </div>
                       </div>
                     </div>
@@ -324,9 +318,6 @@ export default function LogForm({ favourites, onSubmit, onClose, onLogFavourite 
               </div>
               {(type === 'drink' || type === 'water' || type === 'alcohol') && (
                 <input className="input-base" type="number" placeholder="Volume (ml) — optional" value={manualMl} onChange={e => setManualMl(e.target.value)} />
-              )}
-              {type === 'alcohol' && (
-                <input className="input-base" type="number" step="0.1" placeholder="Standard drinks — optional" value={manualAlcohol} onChange={e => setManualAlcohol(e.target.value)} />
               )}
               <button className="btn-primary w-full" onClick={handleManualSubmit} disabled={!manualName.trim() || !manualCals}>
                 Log entry

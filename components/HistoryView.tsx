@@ -5,7 +5,7 @@ import { LogEntry } from '@/lib/types';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine
 } from 'recharts';
-import { getLast7Days, getLast30Days, getEntriesForDate, sumCalories, sumProtein, sumWaterMl, sumAlcoholUnits, formatDateStr } from '@/lib/storage';
+import { getLast7Days, getLast30Days, getEntriesForDate, sumCalories, sumProtein, sumWaterMl, formatDateStr } from '@/lib/storage';
 import { Trash2 } from 'lucide-react';
 
 interface HistoryViewProps {
@@ -16,7 +16,7 @@ interface HistoryViewProps {
 }
 
 type Period = '7d' | '30d' | 'months';
-type Metric = 'cals' | 'protein' | 'water' | 'alcohol';
+type Metric = 'cals' | 'protein' | 'water';
 
 function shortDay(dateStr: string): string {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short' }).slice(0, 3);
@@ -28,16 +28,15 @@ function shortDate(dateStr: string): string {
 }
 
 function getMonthlyData(entries: LogEntry[]) {
-  const map: Record<string, { cals: number; protein: number; water: number; alcohol: number }> = {};
+  const map: Record<string, { cals: number; protein: number; water: number }> = {};
   const dayMap: Record<string, Set<string>> = {};
   entries.forEach(e => {
     const m = e.date.slice(0, 7);
-    if (!map[m]) map[m] = { cals: 0, protein: 0, water: 0, alcohol: 0 };
+    if (!map[m]) map[m] = { cals: 0, protein: 0, water: 0 };
     if (!dayMap[m]) dayMap[m] = new Set();
     map[m].cals += e.calories;
     map[m].protein += e.protein || 0;
     map[m].water += e.ml || 0;
-    map[m].alcohol += e.alcoholUnits || 0;
     dayMap[m].add(e.date);
   });
   return Object.entries(map)
@@ -49,7 +48,6 @@ function getMonthlyData(entries: LogEntry[]) {
         avgCals: Math.round(d.cals / days),
         avgProtein: Math.round(d.protein / days),
         totalWater: Math.round(d.water),
-        totalAlcohol: parseFloat(d.alcohol.toFixed(1)),
         loggedDays: days,
       };
     })
@@ -85,7 +83,6 @@ export default function HistoryView({ entries, calorieGoal, proteinGoal, onDelet
       cals: sumCalories(e),
       protein: sumProtein(e),
       water: Math.round(sumWaterMl(e)),
-      alcohol: parseFloat(sumAlcoholUnits(e).toFixed(1)),
     };
   }), [entries]);
 
@@ -96,7 +93,6 @@ export default function HistoryView({ entries, calorieGoal, proteinGoal, onDelet
       cals: sumCalories(e),
       protein: sumProtein(e),
       water: Math.round(sumWaterMl(e)),
-      alcohol: parseFloat(sumAlcoholUnits(e).toFixed(1)),
     };
   }), [entries]);
 
@@ -105,24 +101,21 @@ export default function HistoryView({ entries, calorieGoal, proteinGoal, onDelet
   const data = period === '7d' ? dailyData7 : period === '30d' ? dailyData30 : monthlyData;
 
   const metricKey = period === 'months'
-    ? (metric === 'cals' ? 'avgCals' : metric === 'protein' ? 'avgProtein' : metric === 'water' ? 'totalWater' : 'totalAlcohol')
+    ? (metric === 'cals' ? 'avgCals' : metric === 'protein' ? 'avgProtein' : 'totalWater')
     : metric;
 
   const metricColor = metric === 'cals' ? 'var(--accent-green)'
     : metric === 'protein' ? 'var(--accent-purple)'
-    : metric === 'water' ? 'var(--accent-blue)'
-    : 'var(--accent-amber)';
+    : 'var(--accent-blue)';
 
   const metricUnit = metric === 'cals' ? 'kcal'
     : metric === 'protein' ? 'g protein'
-    : metric === 'water' ? 'ml'
-    : 'std drinks';
+    : 'ml';
 
   const nonZero7 = dailyData7.filter(d => d.cals > 0);
   const avgCals = nonZero7.length > 0 ? Math.round(nonZero7.reduce((s, d) => s + d.cals, 0) / nonZero7.length) : 0;
   const avgProtein = nonZero7.length > 0 ? Math.round(nonZero7.reduce((s, d) => s + d.protein, 0) / nonZero7.length) : 0;
   const totalWeekCals = dailyData7.reduce((s, d) => s + d.cals, 0);
-  const totalWeekAlcohol = parseFloat(dailyData7.reduce((s, d) => s + d.alcohol, 0).toFixed(1));
 
   const expandedEntries = expandedDate ? getEntriesForDate(entries, expandedDate) : [];
 
@@ -151,7 +144,6 @@ export default function HistoryView({ entries, calorieGoal, proteinGoal, onDelet
           ['cals', '🔥', 'Calories'],
           ['protein', '💪', 'Protein'],
           ['water', '💧', 'Hydration'],
-          ['alcohol', '🍺', 'Alcohol'],
         ] as [Metric, string, string][]).map(([m, emoji, label]) => {
           const color = m === 'cals' ? 'var(--accent-green)' : m === 'protein' ? 'var(--accent-purple)' : m === 'water' ? 'var(--accent-blue)' : 'var(--accent-amber)';
           return (
@@ -215,12 +207,11 @@ export default function HistoryView({ entries, calorieGoal, proteinGoal, onDelet
 
       {/* Weekly summary */}
       {period === '7d' && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {[
             { label: 'week cals', value: totalWeekCals.toLocaleString(), color: 'var(--accent-green)' },
             { label: 'avg kcal/day', value: avgCals, color: 'var(--accent-green)' },
             { label: 'avg protein', value: `${avgProtein}g`, color: 'var(--accent-purple)' },
-            { label: 'std drinks', value: totalWeekAlcohol, color: totalWeekAlcohol > 14 ? 'var(--accent-red)' : 'var(--accent-amber)' },
           ].map(stat => (
             <div key={stat.label} className="card p-3 text-center">
               <div className="mono font-medium" style={{ fontSize: 16, color: stat.color }}>{stat.value}</div>

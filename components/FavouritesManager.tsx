@@ -43,7 +43,6 @@ export default function FavouritesManager({ favourites, onAdd, onUpdate, onImpor
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('serving');
   const [ml, setMl] = useState('');
-  const [alcoholUnits, setAlcoholUnits] = useState('');
   const [emoji, setEmoji] = useState('🍽️');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [filterType, setFilterType] = useState<EntryType | 'all'>('all');
@@ -52,7 +51,7 @@ export default function FavouritesManager({ favourites, onAdd, onUpdate, onImpor
 
   const resetForm = () => {
     setName(''); setCalories(''); setProtein(''); setQuantity('1');
-    setUnit('serving'); setMl(''); setAlcoholUnits(''); setEmoji('🍽️');
+    setUnit('serving'); setMl(''); setEmoji('🍽️');
     setShowForm(false); setEditingId(null); setShowEmojiPicker(false);
   };
 
@@ -66,7 +65,6 @@ export default function FavouritesManager({ favourites, onAdd, onUpdate, onImpor
     setQuantity(String(fav.quantity ?? 1));
     setUnit(fav.unit || 'serving');
     setMl(fav.ml != null ? String(fav.ml) : '');
-    setAlcoholUnits(fav.alcoholUnits != null ? String(fav.alcoholUnits) : '');
     setEmoji(fav.emoji || '🍽️');
     setShowEmojiPicker(false);
   };
@@ -83,7 +81,6 @@ export default function FavouritesManager({ favourites, onAdd, onUpdate, onImpor
       quantity: parseFloat(quantity) || 1,
       unit: unit.trim() || 'serving',
       ml: isLiquid && ml ? parseInt(ml) : undefined,
-      alcoholUnits: type === 'alcohol' && alcoholUnits ? parseFloat(alcoholUnits) : undefined,
       emoji,
     };
     if (editingId) onUpdate({ id: editingId, ...fields });
@@ -151,12 +148,7 @@ export default function FavouritesManager({ favourites, onAdd, onUpdate, onImpor
 
           {/* Liquid fields */}
           {(type === 'drink' || type === 'water' || type === 'alcohol') && (
-            <div className="grid grid-cols-2 gap-2">
-              <input className="input-base" type="number" placeholder="ml (optional)" value={ml} onChange={e => setMl(e.target.value)} />
-              {type === 'alcohol' && (
-                <input className="input-base" type="number" step="0.1" placeholder="Std drinks" value={alcoholUnits} onChange={e => setAlcoholUnits(e.target.value)} />
-              )}
-            </div>
+            <input className="input-base" type="number" placeholder="ml (optional)" value={ml} onChange={e => setMl(e.target.value)} />
           )}
 
           <div className="flex gap-2">
@@ -275,7 +267,6 @@ export default function FavouritesManager({ favourites, onAdd, onUpdate, onImpor
                   <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
                     {fav.quantity} {fav.unit}
                     {fav.ml ? ` · ${fav.ml}ml` : ''}
-                    {fav.alcoholUnits ? ` · ${fav.alcoholUnits} std` : ''}
                     <span className="pill ml-1.5" style={{ fontSize: 10, background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-muted)', padding: '1px 5px' }}>
                       {fav.type}
                     </span>

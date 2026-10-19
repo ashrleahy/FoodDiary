@@ -14,7 +14,6 @@ export interface LogEntry {
   isAIEstimated: boolean;
   isFavourite?: boolean;
   ml?: number;
-  alcoholUnits?: number;
 }
 
 export interface FavouriteFood {
@@ -26,7 +25,6 @@ export interface FavouriteFood {
   quantity: number;
   unit: string;
   ml?: number;
-  alcoholUnits?: number;
   emoji?: string;
 }
 
@@ -36,7 +34,6 @@ export interface DayLog {
   totalCalories: number;
   totalProtein: number;
   totalWaterMl: number;
-  totalAlcoholUnits: number;
 }
 
 export interface AppState {
